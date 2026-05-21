@@ -46,60 +46,6 @@ async def on_ready():
         print(f"   Webhook URL復元完了")
 
 @bot.event
-async def on_member_join(member):
-    if member.bot:
-        return
-
-    user_id = str(member.id)
-    guild = member.guild
-
-    if user_id in data and data[user_id].get("channel_id"):
-        print(f"すでに部屋が存在: {user_id}")
-        return
-
-    category = discord.utils.get(guild.categories, id=data.get("category_id"))
-    if not category:
-        category = discord.utils.get(guild.categories, name=CATEGORY_NAME)
-        if not category:
-            category = await guild.create_category(CATEGORY_NAME)
-        data["category_id"] = category.id
-        save_data()
-
-    if user_id not in data:
-        hash_val = hashlib.md5(str(member.id).encode()).hexdigest()
-        letter = chr(65 + int(hash_val, 16) % 26)
-        num = (int(hash_val[4:8], 16) % 99) + 1
-        anon_name = f"匿名{letter}#{num:02d}"
-        
-        room_name = get_next_room_number()
-        
-        data[user_id] = {
-            "anon_name": anon_name,
-            "room_name": room_name,
-            "channel_id": None
-        }
-
-    user_data = data[user_id]
-    room_name = user_data["room_name"]
-    anon_name = user_data["anon_name"]
-
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-        guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True, manage_messages=True),
-    }
-
-    channel = await category.create_text_channel(room_name, overwrites=overwrites)
-
-    user_data["channel_id"] = channel.id
-    save_data()
-
-    await channel.send(
-        f" **{room_name}** へようこそ、**{anon_name}**。\n"
-        "ここで書いたことは **Botが匿名で広場に転送** されます。"
-    )
-
-@bot.event
 async def on_message(message):
     if message.author.bot:
         return
@@ -114,7 +60,7 @@ async def on_message(message):
 
         content = message.content
 
-        files_to_send = []          # ← ここは「if message.attachments:」の外
+        files_to_send = []
         if message.attachments:
             for att in message.attachments:
                 content += f"\n{att.url}"
@@ -146,7 +92,6 @@ async def on_message(message):
                 print(f"❌ 転送エラー: {e}")
 
     await bot.process_commands(message)
-
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
