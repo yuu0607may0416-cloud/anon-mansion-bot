@@ -140,23 +140,24 @@ async def on_message(message):
                     webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
                     display_name = f"{room_name}_user"
                     
-                    # Webhook受信用パラメータを安全に組み立てる辞書
-                    send_kwargs = {
-                        "username": display_name,
-                        "avatar_url": avatar_url
-                    }
+                    # 送信するテキスト（空文字の場合はAPIエラー回避のためNoneにする）
+                    send_content = content if content else None
                     
-                    # テキスト本文がある場合のみパラメータに追加
-                    if content:
-                        send_kwargs["content"] = content
-                        
-                    # 取得に成功したファイルがある場合のみパラメータに追加（NoneTypeエラーの防止）
                     if files_to_send:
-                        send_kwargs["files"] = files_to_send
-                        
-                    # 送信できる中身（テキストかファイル）がある場合のみWebhookを実行
-                    if "content" in send_kwargs or "files" in send_kwargs:
-                        await webhook.send(**send_kwargs)
+                        # 画像などのファイルがある場合
+                        await webhook.send(
+                            content=send_content,
+                            username=display_name,
+                            avatar_url=avatar_url,
+                            files=files_to_send
+                        )
+                    elif send_content:
+                        # テキストのみの場合（files引数を完全に除外）
+                        await webhook.send(
+                            content=send_content,
+                            username=display_name,
+                            avatar_url=avatar_url
+                        )
                         
                 print(f"✅ 転送成功: {room_name}")
             except Exception as e:
