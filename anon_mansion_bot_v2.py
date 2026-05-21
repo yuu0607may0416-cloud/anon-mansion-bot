@@ -5,6 +5,7 @@ import os
 import hashlib
 import aiohttp
 from discord import Webhook
+import io
 
 intents = discord.Intents.default()
 intents.members = True
