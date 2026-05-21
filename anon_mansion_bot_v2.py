@@ -119,7 +119,6 @@ async def on_message(message):
         if message.attachments:
             for att in message.attachments:
                 content += f"\n{att.url}"
-
                 async with aiohttp.ClientSession() as session:
                     async with session.get(att.url) as resp:
                         if resp.status == 200:
