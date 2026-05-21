@@ -116,14 +116,15 @@ async def on_message(message):
             content = message.content
 
 files_to_send = []
-if message.attachments:
-    for att in message.attachments:
-        content += f"\n{att.url}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(att.url) as resp:
-                if resp.status == 200:
-                    file_data = await resp.read()
-                    files_to_send.append(discord.File(io.BytesIO(file_data), filename=att.filename))
+        if message.attachments:
+            for att in message.attachments:
+                content += f"\n{att.url}"
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(att.url) as resp:
+                        if resp.status == 200:
+                            file_data = await resp.read()
+                            files_to_send.append(discord.File(io.BytesIO(file_data), filename=att.filename))
         try:
             await message.delete()
         except:
