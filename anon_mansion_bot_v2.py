@@ -112,7 +112,6 @@ async def on_message(message):
 
         content = message.content
 
-        # Embedを使って画像もきれいに表示
         embed = discord.Embed(
             description=content if content else None,
             color=0x5865F2
@@ -122,31 +121,27 @@ async def on_message(message):
             icon_url=avatar_url
         )
 
-        # 画像・ファイル対応
         if message.attachments:
             for att in message.attachments:
                 if att.content_type and att.content_type.startswith("image/"):
-                    embed.set_image(url=att.url)          # 画像を綺麗に埋め込み
+                    embed.set_image(url=att.url)
                 else:
-                    # 画像以外はリンクとして表示
                     embed.description = (embed.description or "") + f"\n[📎 {att.filename}]({att.url})"
 
-        # 元のメッセージを削除
         try:
             await message.delete()
         except:
             pass
 
-        # 公開広場に送信
         if PUBLIC_CHANNEL_ID and PUBLIC_WEBHOOK_URL:
             try:
                 async with aiohttp.ClientSession() as session:
                     webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
                     await webhook.send(embed=embed)
-                print(f"✅ 転送成功: {room_name}（画像対応）")
             except Exception as e:
-                print(f"❌ 転送エラー: {e}")
+                print(f"転送エラー: {e}")
 
+    # ★★★ コマンドを処理する大事な1行 ★★★
     await bot.process_commands(message)
 
     # ★★★ ここが超重要！コマンドを確実に処理する行 ★★★
