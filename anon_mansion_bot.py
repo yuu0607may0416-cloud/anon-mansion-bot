@@ -5,7 +5,7 @@ import os
 import hashlib
 import aiohttp
 from discord import Webhook
-import io  # 修正1: 画像エラー対策でioモジュールを追加
+import io
 
 intents = discord.Intents.default()
 intents.members = True
@@ -43,7 +43,61 @@ async def on_ready():
     global PUBLIC_WEBHOOK_URL
     if "public_webhook_url" in data:
         PUBLIC_WEBHOOK_URL = data["public_webhook_url"]
-        print(f"    Webhook URL復元完了")
+        print(f"   Webhook URL復元完了")
+
+@bot.event
+async def on_member_join(member):
+    if member.bot:
+        return
+
+    user_id = str(member.id)
+    guild = member.guild
+
+    if user_id in data and data[user_id].get("channel_id"):
+        print(f"すでに部屋が存在: {user_id}")
+        return
+
+    category = discord.utils.get(guild.categories, id=data.get("category_id"))
+    if not category:
+        category = discord.utils.get(guild.categories, name=CATEGORY_NAME)
+        if not category:
+            category = await guild.create_category(CATEGORY_NAME)
+        data["category_id"] = category.id
+        save_data()
+
+    if user_id not in data:
+        hash_val = hashlib.md5(str(member.id).encode()).hexdigest()
+        letter = chr(65 + int(hash_val, 16) % 26)
+        num = (int(hash_val[4:8], 16) % 99) + 1
+        anon_name = f"匿名{letter}#{num:02d}"
+        
+        room_name = get_next_room_number()
+        
+        data[user_id] = {
+            "anon_name": anon_name,
+            "room_name": room_name,
+            "channel_id": None
+        }
+
+    user_data = data[user_id]
+    room_name = user_data["room_name"]
+    anon_name = user_data["anon_name"]
+
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+        guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True, manage_messages=True),
+    }
+
+    channel = await category.create_text_channel(room_name, overwrites=overwrites)
+
+    user_data["channel_id"] = channel.id
+    save_data()
+
+    await channel.send(
+        f" **{room_name}** へようこそ、**{anon_name}**。\n"
+        "ここで書いたことは **Botが匿名で広場に転送** されます。"
+    )
 
 @bot.event
 async def on_message(message):
@@ -60,16 +114,20 @@ async def on_message(message):
 
         content = message.content
 
+        # 添付ファイルのダウンロード処理
         files_to_send = []
         if message.attachments:
-            for att in message.attachments:
-                content += f"\n{att.url}"
-
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(att.url) as resp:
-                        if resp.status == 200:
-                            file_data = await resp.read()
-                            files_to_send.append(discord.File(io.BytesIO(file_data), filename=att.filename))
+            async with aiohttp.ClientSession() as session:
+                for att in message.attachments:
+                    try:
+                        async with session.get(att.url) as resp:
+                            if resp.status == 200:
+                                file_data = await resp.read()
+                                files_to_send.append(
+                                    discord.File(io.BytesIO(file_data), filename=att.filename)
+                                )
+                    except Exception as e:
+                        print(f"⚠️ ファイルのダウンロード失敗: {e}")
 
         try:
             await message.delete()
@@ -82,20 +140,29 @@ async def on_message(message):
                     webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
                     display_name = f"{room_name}_user"
                     
-                    # 修正2: テキストエラー対策。添付ファイルがない場合は「files」を引数に渡さないようにする
+                    # Webhook受信用パラメータを安全に組み立てる辞書
                     send_kwargs = {
-                        "content": content,
                         "username": display_name,
                         "avatar_url": avatar_url
                     }
+                    
+                    # テキスト本文がある場合のみパラメータに追加
+                    if content:
+                        send_kwargs["content"] = content
+                        
+                    # 取得に成功したファイルがある場合のみパラメータに追加（NoneTypeエラーの防止）
                     if files_to_send:
                         send_kwargs["files"] = files_to_send
                         
-                    await webhook.send(**send_kwargs)
+                    # 送信できる中身（テキストかファイル）がある場合のみWebhookを実行
+                    if "content" in send_kwargs or "files" in send_kwargs:
+                        await webhook.send(**send_kwargs)
+                        
                 print(f"✅ 転送成功: {room_name}")
             except Exception as e:
                 print(f"❌ 転送エラー: {e}")
 
+    # ★★★ コマンドを確実に処理する行 ★★★
     await bot.process_commands(message)
 
 @bot.command()
