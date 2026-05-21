@@ -113,15 +113,12 @@ async def on_message(message):
         avatar_url = f"https://robohash.org/{message.author.id}.png?set=set4"
 
         content = message.content
-        if message.attachments:
-            content = message.content
 
         files_to_send = []
-        
         if message.attachments:
             for att in message.attachments:
                 content += f"\n{att.url}"
-                
+
                 async with aiohttp.ClientSession() as session:
                     async with session.get(att.url) as resp:
                         if resp.status == 200:
@@ -147,6 +144,8 @@ async def on_message(message):
                 print(f"✅ 転送成功: {room_name}")
             except Exception as e:
                 print(f"❌ 転送エラー: {e}")
+
+    await bot.process_commands(message)
     # ★★★ ここが超重要！コマンドを確実に処理する行 ★★★
     await bot.process_commands(message)
 
