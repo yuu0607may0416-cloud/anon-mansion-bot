@@ -117,6 +117,7 @@ async def on_message(message):
             content = message.content
 
         files_to_send = []
+        
         if message.attachments:
             for att in message.attachments:
                 content += f"\n{att.url}"
