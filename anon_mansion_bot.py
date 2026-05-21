@@ -5,7 +5,7 @@ import os
 import hashlib
 import aiohttp
 from discord import Webhook
-import io
+import io  # エラー対策1: ioモジュールを追加
 
 intents = discord.Intents.default()
 intents.members = True
@@ -43,7 +43,7 @@ async def on_ready():
     global PUBLIC_WEBHOOK_URL
     if "public_webhook_url" in data:
         PUBLIC_WEBHOOK_URL = data["public_webhook_url"]
-        print(f"   Webhook URL復元完了")
+        print(f"    Webhook URL復元完了")
 
 @bot.event
 async def on_message(message):
@@ -81,17 +81,25 @@ async def on_message(message):
                 async with aiohttp.ClientSession() as session:
                     webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
                     display_name = f"{room_name}_user"
-                    await webhook.send(
-                        content=content,
-                        username=display_name,
-                        avatar_url=avatar_url,
-                        files=files_to_send if files_to_send else None
-                    )
+                    
+                    # エラー対策2: Webhook送信用パラメータの辞書を作成
+                    send_kwargs = {
+                        "content": content,
+                        "username": display_name,
+                        "avatar_url": avatar_url
+                    }
+                    
+                    # 添付ファイルがある時のみ `files` を追加（Noneを渡さない）
+                    if files_to_send:
+                        send_kwargs["files"] = files_to_send
+                        
+                    await webhook.send(**send_kwargs)
                 print(f"✅ 転送成功: {room_name}")
             except Exception as e:
                 print(f"❌ 転送エラー: {e}")
 
     await bot.process_commands(message)
+
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
