@@ -137,7 +137,7 @@ if message.attachments:
                     await webhook.send(
                         content=content,
                         username=display_name,
-                        avatar_url=avatar_url
+                        avatar_url=avatar_url,
                         files=files_to_send if files_to_send else None
                     )
                 print(f"✅ 転送成功: {room_name}")
