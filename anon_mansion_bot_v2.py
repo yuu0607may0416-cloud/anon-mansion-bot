@@ -1,3 +1,4 @@
+import io
 import discord
 from discord.ext import commands
 import json
@@ -5,7 +6,6 @@ import os
 import hashlib
 import aiohttp
 from discord import Webhook
-import io
 
 intents = discord.Intents.default()
 intents.members = True
