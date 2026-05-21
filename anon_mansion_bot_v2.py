@@ -108,25 +108,45 @@ async def on_message(message):
     if user_id in data and message.channel.id == data[user_id].get("channel_id"):
         user_data = data[user_id]
         room_name = user_data["room_name"]
+        anon_name = user_data["anon_name"]
         avatar_url = f"https://robohash.org/{message.author.id}.png?set=set4"
 
+   if message.attachments:
+    # 画像がある場合はEmbedで綺麗に表示
+    embed = discord.Embed(
+        description=content if content else None,
+        color=0x5865F2
+    )
+    embed.set_author(
+        name=f"{room_name}_user",
+        icon_url=avatar_url
+    )
+    
+    for att in message.attachments:
+        if att.content_type and att.content_type.startswith("image/"):
+            embed.set_image(url=att.url)
+        else:
+            embed.description = (embed.description or "") + f"\n[📎 {att.filename}]({att.url})"
+    
+    try:
+        await message.delete()
+    except:
+        pass
+
+    if PUBLIC_CHANNEL_ID and PUBLIC_WEBHOOK_URL:
+        try:
+            async with aiohttp.ClientSession() as session:
+                webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
+                await webhook.send(embed=embed)
+            print(f"✅ 転送成功: {room_name}（画像対応）")
+        except Exception as e:
+            print(f"❌ 転送エラー: {e}")
+    
+    return
+
         content = message.content
-
-        embed = discord.Embed(
-            description=content if content else None,
-            color=0x5865F2
-        )
-        embed.set_author(
-            name=f"{room_name}_user",
-            icon_url=avatar_url
-        )
-
         if message.attachments:
-            for att in message.attachments:
-                if att.content_type and att.content_type.startswith("image/"):
-                    embed.set_image(url=att.url)
-                else:
-                    embed.description = (embed.description or "") + f"\n[📎 {att.filename}]({att.url})"
+            content += "\n" + "\n".join(a.url for a in message.attachments)
 
         try:
             await message.delete()
@@ -137,12 +157,15 @@ async def on_message(message):
             try:
                 async with aiohttp.ClientSession() as session:
                     webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
-                    await webhook.send(embed=embed)
+                    display_name = f"{room_name}_user"
+                    await webhook.send(
+                        content=content,
+                        username=display_name,
+                        avatar_url=avatar_url
+                    )
+                print(f"✅ 転送成功: {room_name}")
             except Exception as e:
-                print(f"転送エラー: {e}")
-
-    # ★★★ コマンドを処理する大事な1行 ★★★
-    await bot.process_commands(message)
+                print(f"❌ 転送エラー: {e}")
 
     # ★★★ ここが超重要！コマンドを確実に処理する行 ★★★
     await bot.process_commands(message)
