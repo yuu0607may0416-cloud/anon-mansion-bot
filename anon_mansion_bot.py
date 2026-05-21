@@ -114,7 +114,7 @@ async def on_message(message):
 
         content = message.content
 
-        files_to_send = []
+        files_to_send = []          # ← ここは「if message.attachments:」の外
         if message.attachments:
             for att in message.attachments:
                 content += f"\n{att.url}"
