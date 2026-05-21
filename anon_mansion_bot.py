@@ -5,7 +5,7 @@ import os
 import hashlib
 import aiohttp
 from discord import Webhook
-import io  # エラー対策1: ioモジュールを追加
+import io  # 修正1: 画像エラー対策でioモジュールを追加
 
 intents = discord.Intents.default()
 intents.members = True
@@ -82,14 +82,12 @@ async def on_message(message):
                     webhook = Webhook.from_url(PUBLIC_WEBHOOK_URL, session=session)
                     display_name = f"{room_name}_user"
                     
-                    # エラー対策2: Webhook送信用パラメータの辞書を作成
+                    # 修正2: テキストエラー対策。添付ファイルがない場合は「files」を引数に渡さないようにする
                     send_kwargs = {
                         "content": content,
                         "username": display_name,
                         "avatar_url": avatar_url
                     }
-                    
-                    # 添付ファイルがある時のみ `files` を追加（Noneを渡さない）
                     if files_to_send:
                         send_kwargs["files"] = files_to_send
                         
