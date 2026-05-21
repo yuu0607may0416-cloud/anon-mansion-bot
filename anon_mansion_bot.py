@@ -146,8 +146,6 @@ async def on_message(message):
                 print(f"❌ 転送エラー: {e}")
 
     await bot.process_commands(message)
-    # ★★★ ここが超重要！コマンドを確実に処理する行 ★★★
-    await bot.process_commands(message)
 
 @bot.command()
 @commands.has_permissions(administrator=True)
